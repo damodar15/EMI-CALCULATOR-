@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verdant Finance | EMI Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        
+        /* Custom Emerald/Teal Gradient */
+        .gradient-bg {
+            background: linear-gradient(135deg, #064e3b 0%, #059669 50%, #0d9488 100%);
+        }
+        
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .input-field {
+            transition: all 0.3s ease;
+        }
+        
+        .input-field:focus {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(5, 150, 105, 0.3);
+        }
+        
+        /* Range Slider Styling */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: transparent;
+        }
+        
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #059669;
+            cursor: pointer;
+            margin-top: -8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            transition: transform 0.2s;
+        }
+        
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+        
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #d1fae5;
+            border-radius: 2px;
+        }
+        
+        .result-card {
+            background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+            border-left: 4px solid #059669;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+        
+        .animate-fade-in {
+            animation: fadeIn 0.6s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .table-row:hover {
+            background-color: #ecfdf5;
+            transition: background-color 0.2s;
+        }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #059669;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #047857;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+    <!-- Header -->
+    <header class="gradient-bg text-white py-8 shadow-2xl">
+        <div class="container mx-auto px-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                        <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-bold tracking-tight">Verdant Finance</h1>
+                        <p class="text-emerald-100 text-sm">Smart Loan Planning</p>
+                    </div>
+                </div>
+                <div class="hidden md:block text-right">
+                    <p class="text-emerald-100 text-sm">Typical Interest Rate</p>
+                    <p class="text-2xl font-bold">8% - 12%</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container mx-auto px-4 py-8">
+        
+        <!-- Main Calculator Section -->
+        <div class="grid lg:grid-cols-2 gap-8 mb-12">
+            
+            <!-- Input Panel -->
+            <div class="glass-panel rounded-2xl p-8 shadow-xl animate-fade-in">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                    <span class="w-8 h-8 bg-emerald-100 text-emerald-600 rounded-lg flex items-center justify-center mr-3">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                        </svg>
+                    </span>
+                    Loan Details
+                </h2>
+
+                <!-- Loan Amount -->
+                <div class="mb-6">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Loan Amount (₹)</label>
+                    <div class="relative">
+                        <input type="number" id="loanAmount" class="input-field w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-emerald-500 focus:outline-none text-lg font-semibold text-gray-800" value="500000" min="10000" max="10000000" step="10000">
+                        <span class="absolute right-4 top-3 text-gray-400">₹</span>
+                    </div>
+                    <input type="range" id="loanAmountRange" class="w-full mt-2" min="10000" max="10000000" value="500000" step="10000">
+                    <div class="flex justify-between text-xs text-gray-500 mt-1">
+                        <span>₹10K</span>
+                        <span>₹1Cr</span>
+                    </div>
+                </div>
+
+                <!-- Interest Rate -->
+                <div class="mb-6">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Interest Rate (% per annum)</label>
+                    <div class="relative">
+                        <input type="number" id="interestRate" class="input-field w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-emerald-500 focus:outline-none text-lg font-semibold text-gray-800" value="10.5" min="1" max="20" step="0.1">
+                        <span class="absolute right-4 top-3 text-gray-400">%</span>
+                    </div>
+                    <input type="range" id="interestRateRange" class="w-full mt-2" min="1" max="20" value="10.5" step="0.1">
+                    <div class="flex justify-between text-xs text-gray-500 mt-1">
+                        <span>1%</span>
+                        <span>20%</span>
+                    </div>
+                </div>
+
+                <!-- Loan Tenure -->
+                <div class="mb-6">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Loan Tenure</label>
+                    <div class="flex gap-4 mb-2">
+                        <div class="relative flex-1">
+                            <input type="number" id="loanTenure" class="input-field w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-emerald-500 focus:outline-none text-lg font-semibold text-gray-800" value="5" min="1" max="30">
+                        </div>
+                        <select id="tenureType" class="input-field px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-emerald-500 focus:outline-none font-semibold text-gray-800 bg-white">
+                            <option value="years">Years</option>
+                            <option value="months">Months</option>
+                        </select>
+                    </div>
+                    <input type="range" id="loanTenureRange" class="w-full mt-2" min="1" max="30" value="5" step="1">
+                </div>
+
+                <!-- Calculate Button -->
+                <button onclick="calculateEMI()" class="w-full gradient-bg text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 flex items-center justify-center space-x-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                    </svg>
+                    <span>Calculate EMI</span>
+                </button>
+            </div>
+
+            <!-- Results Panel -->
+            <div class="space-y-6">
+                <!-- EMI Result Card -->
+                <div class="result-card rounded-2xl p-8 shadow-xl animate-fade-in">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-emerald-800">Monthly EMI</h3>
+                        <span class="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold">PAYABLE</span>
+                    </div>
+                    <div class="text-5xl font-bold text-emerald-900 mb-2" id="emiResult">₹10,747</div>
+                    <p class="text-emerald-700 text-sm">per month</p>
+                </div>
+
+                <!-- Breakdown Cards -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+                        <div class="w-10 h-10 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center mb-3">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <p class="text-sm text-gray-500 mb-1">Principal Amount</p>
+                        <p class="text-xl font-bold text-gray-800" id="principalResult">₹5,00,000</p>
+                    </div>
+                    
+                    <div class="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
+                        <div class="w-10 h-10 bg-amber-100 text-amber-600 rounded-lg flex items-center justify-center mb-3">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                            </svg>
+                        </div>
+                        <p class="text-sm text-gray-500 mb-1">Total Interest</p>
+                        <p class="text-xl font-bold text-gray-800" id="interestResult">₹1,44,820</p>
+                    </div>
+                </div>
+
+                <!-- Total Payment -->
+                <div class="bg-gray-900 text-white rounded-2xl p-6 shadow-xl">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-400 text-sm mb-1">Total Payment</p>
+                            <p class="text-3xl font-bold" id="totalPaymentResult">₹6,44,820</p>
+                        </div>
+                        <div class="w-14 h-14 bg-white/10 rounded-full flex items-center justify-center">
+                            <svg class="w-7 h-7 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chart Section -->
+        <div class="glass-panel rounded-2xl p-8 shadow-xl mb-8 animate-fade-in">
+            <h3 class="text-xl font-bold text-gray-800 mb-6">Payment Breakdown</h3>
+            <div class="chart-container flex items-center justify-center">
+                <canvas id="emiChart"></canvas>
+            </div>
+            <div class="flex justify-center gap-6 mt-4">
+                <div class="flex items-center gap-2">
+                    <div class="w-4 h-4 bg-emerald-500 rounded"></div>
+                    <span class="text-sm text-gray-600">Principal (77.5%)</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="w-4 h-4 bg-amber-400 rounded"></div>
+                    <span class="text-sm text-gray-600">Interest (22.5%)</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Amortization Schedule -->
+        <div class="glass-panel rounded-2xl shadow-xl overflow-hidden animate-fade-in">
+            <div class="p-6 border-b border-gray-200 flex items-center justify-between">
+                <h3 class="text-xl font-bold text-gray-800">Amortization Schedule</h3>
+                <button onclick="toggleSchedule()" class="px-4 py-2 bg-emerald-100 text-emerald-700 rounded-lg font-semibold hover:bg-emerald-200 transition-colors">
+                    <span id="toggleText">Hide Schedule</span>
+                </button>
+            </div>
+            
+            <div id="scheduleContainer" class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Year</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Opening Balance</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">EMI</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Interest</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Principal</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Closing Balance</th>
+                        </tr>
+                    </thead>
+                    <tbody id="scheduleBody" class="divide-y divide-gray-200 bg-white">
+                        <!-- Generated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Loan Guide -->
+        <div class="mt-8 grid md:grid-cols-3 gap-6">
+            <div class="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl p-6 border border-emerald-100">
+                <div class="w-12 h-12 bg-emerald-500 text-white rounded-lg flex items-center justify-center mb-4">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
+                </div>
+                <h4 class="font-bold text-gray-800 mb-2">Home Loan</h4>
+                <p class="text-sm text-gray-600">Lower rates (8-9%) with tenure up to 30 years. Tax benefits available under Section 80C.</p>
+            </div>
+            
+            <div class="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl p-6 border border-blue-100">
+                <div class="w-12 h-12 bg-blue-500 text-white rounded-lg flex items-center justify-center mb-4">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                </div>
+                <h4 class="font-bold text-gray-800 mb-2">Personal Loan</h4>
+                <p class="text-sm text-gray-600">Quick processing (10-15% rates). No collateral required. Tenure typically 1-5 years.</p>
+            </div>
+            
+            <div class="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-6 border border-amber-100">
+                <div class="w-12 h-12 bg-amber-500 text-white rounded-lg flex items-center justify-center mb-4">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
+                    </svg>
+                </div>
+                <h4 class="font-bold text-gray-800 mb-2">Car Loan</h4>
+                <p class="text-sm text-gray-600">Competitive rates (9-12%). Up to 90% financing. Tenure up to 7 years available.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        let myChart = null;
+        let scheduleVisible = true;
+
+        // Input synchronization
+        function syncInputs() {
+            const loanAmount = document.getElementById('loanAmount');
+            const loanAmountRange = document.getElementById('loanAmountRange');
+            const interestRate = document.getElementById('interestRate');
+            const interestRateRange = document.getElementById('interestRateRange');
+            const loanTenure = document.getElementById('loanTenure');
+            const loanTenureRange = document.getElementById('loanTenureRange');
+            const tenureType = document.getElementById('tenureType');
+
+            // Two-way binding
+            loanAmount.addEventListener('input', () => {
+                loanAmountRange.value = loanAmount.value;
+                calculateEMI();
+            });
+            loanAmountRange.addEventListener('input', () => {
+                loanAmount.value = loanAmountRange.value;
+                calculateEMI();
+            });
+
+            interestRate.addEventListener('input', () => {
+                interestRateRange.value = interestRate.value;
+                calculateEMI();
+            });
+            interestRateRange.addEventListener('input', () => {
+                interestRate.value = interestRateRange.value;
+                calculateEMI();
+            });
+
+            loanTenure.addEventListener('input', () => {
+                loanTenureRange.value = loanTenure.value;
+                calculateEMI();
+            });
+            loanTenureRange.addEventListener('input', () => {
+                loanTenure.value = loanTenureRange.value;
+                calculateEMI();
+            });
+
+            tenureType.addEventListener('change', calculateEMI);
+        }
+
+        function calculateEMI() {
+            const P = parseFloat(document.getElementById('loanAmount').value);
+            const r = parseFloat(document.getElementById('interestRate').value) / 12 / 100;
+            let n = parseFloat(document.getElementById('loanTenure').value);
+            const type = document.getElementById('tenureType').value;
+            
+            if (type === 'years') n = n * 12;
+            
+            // EMI Formula: P * r * (1+r)^n / ((1+r)^n - 1)
+            const emi = P * r * Math.pow(1 + r, n) / (Math.pow(1 + r, n) - 1);
+            const totalPayment = emi * n;
+            const totalInterest = totalPayment - P;
+            
+            // Update results
+            document.getElementById('emiResult').textContent = '₹' + Math.round(emi).toLocaleString('en-IN');
+            document.getElementById('principalResult').textContent = '₹' + P.toLocaleString('en-IN');
+            document.getElementById('interestResult').textContent = '₹' + Math.round(totalInterest).toLocaleString('en-IN');
+            document.getElementById('totalPaymentResult').textContent = '₹' + Math.round(totalPayment).toLocaleString('en-IN');
+            
+            // Update chart
+            updateChart(P, totalInterest);
+            
+            // Update schedule
+            generateSchedule(P, r, n, emi);
+        }
+
+        function updateChart(principal, interest) {
+            const ctx = document.getElementById('emiChart').getContext('2d');
+            
+            if (myChart) {
+                myChart.destroy();
+            }
+            
+            myChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Principal', 'Interest'],
+                    datasets: [{
+                        data: [principal, interest],
+                        backgroundColor: ['#10b981', '#fbbf24'],
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return '₹' + Math.round(context.raw).toLocaleString('en-IN');
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function generateSchedule(P, r, n, emi) {
+            const tbody = document.getElementById('scheduleBody');
+            tbody.innerHTML = '';
+            
+            let balance = P;
+            const yearlyData = [];
+            
+            // Calculate yearly data
+            for (let year = 1; year <= Math.ceil(n / 12); year++) {
+                let yearInterest = 0;
+                let yearPrincipal = 0;
+                const monthsInYear = Math.min(12, n - (year - 1) * 12);
+                
+                for (let month = 0; month < monthsInYear; month++) {
+                    const interest = balance * r;
+                    const principal = emi - interest;
+                    yearInterest += interest;
+                    yearPrincipal += principal;
+                    balance -= principal;
+                }
+                
+                yearlyData.push({
+                    year: year,
+                    opening: balance + yearPrincipal,
+                    emi: emi * monthsInYear,
+                    interest: yearInterest,
+                    principal: yearPrincipal,
+                    closing: balance > 0 ? balance : 0
+                });
+            }
+            
+            // Render table
+            yearlyData.forEach((data, index) => {
+                const row = document.createElement('tr');
+                row.className = 'table-row transition-colors';
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${data.year}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">₹${Math.round(data.opening).toLocaleString('en-IN')}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-emerald-600 font-semibold">₹${Math.round(data.emi).toLocaleString('en-IN')}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-amber-600">₹${Math.round(data.interest).toLocaleString('en-IN')}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-blue-600">₹${Math.round(data.principal).toLocaleString('en-IN')}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">₹${Math.round(data.closing).toLocaleString('en-IN')}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function toggleSchedule() {
+            const container = document.getElementById('scheduleContainer');
+            const btn = document.getElementById('toggleText');
+            scheduleVisible = !scheduleVisible;
+            
+            if (scheduleVisible) {
+                container.style.display = 'block';
+                btn.textContent = 'Hide Schedule';
+            } else {
+                container.style.display = 'none';
+                btn.textContent = 'Show Schedule';
+            }
+        }
+
+        // Initialize
+        syncInputs();
+        calculateEMI();
+    </script>
+</body>
+</html>
