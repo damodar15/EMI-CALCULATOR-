@@ -3,13 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Verdant Finance | EMI Calculator</title>
+    <title>Verdant Finance | EMI Calculator with Export</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Libraries for PDF and Excel generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
         
-        /* Custom Emerald/Teal Gradient */
         .gradient-bg {
             background: linear-gradient(135deg, #064e3b 0%, #059669 50%, #0d9488 100%);
         }
@@ -29,7 +32,6 @@
             box-shadow: 0 10px 25px -5px rgba(5, 150, 105, 0.3);
         }
         
-        /* Range Slider Styling */
         input[type=range] {
             -webkit-appearance: none;
             background: transparent;
@@ -83,7 +85,6 @@
             transition: background-color 0.2s;
         }
         
-        /* Custom Scrollbar */
         ::-webkit-scrollbar {
             width: 8px;
             height: 8px;
@@ -98,8 +99,27 @@
             border-radius: 4px;
         }
         
-        ::-webkit-scrollbar-thumb:hover {
-            background: #047857;
+        .download-btn {
+            transition: all 0.3s ease;
+        }
+        
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.2);
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
     </style>
 </head>
@@ -245,6 +265,23 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- DOWNLOAD BUTTONS SECTION -->
+                <div class="grid grid-cols-2 gap-4 mt-6">
+                    <button onclick="downloadPDF()" class="download-btn bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center space-x-2 shadow-lg">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                        </svg>
+                        <span>Download PDF</span>
+                    </button>
+                    
+                    <button onclick="downloadExcel()" class="download-btn bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center space-x-2 shadow-lg">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        <span>Download Excel</span>
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -257,11 +294,11 @@
             <div class="flex justify-center gap-6 mt-4">
                 <div class="flex items-center gap-2">
                     <div class="w-4 h-4 bg-emerald-500 rounded"></div>
-                    <span class="text-sm text-gray-600">Principal (77.5%)</span>
+                    <span class="text-sm text-gray-600" id="principalPercent">Principal (77.5%)</span>
                 </div>
                 <div class="flex items-center gap-2">
                     <div class="w-4 h-4 bg-amber-400 rounded"></div>
-                    <span class="text-sm text-gray-600">Interest (22.5%)</span>
+                    <span class="text-sm text-gray-600" id="interestPercent">Interest (22.5%)</span>
                 </div>
             </div>
         </div>
@@ -276,7 +313,7 @@
             </div>
             
             <div id="scheduleContainer" class="overflow-x-auto">
-                <table class="w-full">
+                <table class="w-full" id="amortizationTable">
                     <thead class="bg-gray-50">
                         <tr>
                             <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Year</th>
@@ -332,6 +369,11 @@
     <script>
         let myChart = null;
         let scheduleVisible = true;
+        let currentScheduleData = [];
+        let currentEMI = 0;
+        let currentPrincipal = 0;
+        let currentInterest = 0;
+        let currentTotal = 0;
 
         // Input synchronization
         function syncInputs() {
@@ -343,7 +385,6 @@
             const loanTenureRange = document.getElementById('loanTenureRange');
             const tenureType = document.getElementById('tenureType');
 
-            // Two-way binding
             loanAmount.addEventListener('input', () => {
                 loanAmountRange.value = loanAmount.value;
                 calculateEMI();
@@ -382,16 +423,26 @@
             
             if (type === 'years') n = n * 12;
             
-            // EMI Formula: P * r * (1+r)^n / ((1+r)^n - 1)
             const emi = P * r * Math.pow(1 + r, n) / (Math.pow(1 + r, n) - 1);
             const totalPayment = emi * n;
             const totalInterest = totalPayment - P;
+            
+            currentEMI = emi;
+            currentPrincipal = P;
+            currentInterest = totalInterest;
+            currentTotal = totalPayment;
             
             // Update results
             document.getElementById('emiResult').textContent = '₹' + Math.round(emi).toLocaleString('en-IN');
             document.getElementById('principalResult').textContent = '₹' + P.toLocaleString('en-IN');
             document.getElementById('interestResult').textContent = '₹' + Math.round(totalInterest).toLocaleString('en-IN');
             document.getElementById('totalPaymentResult').textContent = '₹' + Math.round(totalPayment).toLocaleString('en-IN');
+            
+            // Update percentages
+            const principalPercent = ((P / totalPayment) * 100).toFixed(1);
+            const interestPercent = ((totalInterest / totalPayment) * 100).toFixed(1);
+            document.getElementById('principalPercent').textContent = `Principal (${principalPercent}%)`;
+            document.getElementById('interestPercent').textContent = `Interest (${interestPercent}%)`;
             
             // Update chart
             updateChart(P, totalInterest);
@@ -441,11 +492,10 @@
         function generateSchedule(P, r, n, emi) {
             const tbody = document.getElementById('scheduleBody');
             tbody.innerHTML = '';
+            currentScheduleData = [];
             
             let balance = P;
-            const yearlyData = [];
             
-            // Calculate yearly data
             for (let year = 1; year <= Math.ceil(n / 12); year++) {
                 let yearInterest = 0;
                 let yearPrincipal = 0;
@@ -459,18 +509,17 @@
                     balance -= principal;
                 }
                 
-                yearlyData.push({
+                const yearData = {
                     year: year,
                     opening: balance + yearPrincipal,
                     emi: emi * monthsInYear,
                     interest: yearInterest,
                     principal: yearPrincipal,
                     closing: balance > 0 ? balance : 0
-                });
-            }
-            
-            // Render table
-            yearlyData.forEach((data, index) => {
+                };
+                
+                currentScheduleData.push(yearData);
+                
                 const row = document.createElement('tr');
                 row.className = 'table-row transition-colors';
                 row.innerHTML = `
@@ -482,7 +531,7 @@
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">₹${Math.round(data.closing).toLocaleString('en-IN')}</td>
                 `;
                 tbody.appendChild(row);
-            });
+            }
         }
 
         function toggleSchedule() {
@@ -497,6 +546,227 @@
                 container.style.display = 'none';
                 btn.textContent = 'Show Schedule';
             }
+        }
+
+        // DOWNLOAD PDF FUNCTION
+        function downloadPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // Header
+            doc.setFillColor(6, 78, 59);
+            doc.rect(0, 0, 210, 40, 'F');
+            
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(24);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Verdant Finance', 20, 25);
+            
+            doc.setFontSize(12);
+            doc.setFont('helvetica', 'normal');
+            doc.text('EMI Calculation Report', 20, 35);
+            
+            // Date
+            const date = new Date().toLocaleDateString('en-IN');
+            doc.text(`Date: ${date}`, 150, 35);
+            
+            // Loan Details Section
+            doc.setTextColor(6, 78, 59);
+            doc.setFontSize(16);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Loan Details', 20, 60);
+            
+            doc.setFontSize(11);
+            doc.setTextColor(80, 80, 80);
+            doc.setFont('helvetica', 'normal');
+            
+            const loanAmount = document.getElementById('loanAmount').value;
+            const interestRate = document.getElementById('interestRate').value;
+            const loanTenure = document.getElementById('loanTenure').value;
+            const tenureType = document.getElementById('tenureType').value;
+            
+            doc.text(`Loan Amount: ₹${parseInt(loanAmount).toLocaleString('en-IN')}`, 20, 70);
+            doc.text(`Interest Rate: ${interestRate}% per annum`, 20, 78);
+            doc.text(`Loan Tenure: ${loanTenure} ${tenureType}`, 20, 86);
+            
+            // EMI Results Box
+            doc.setFillColor(236, 253, 245);
+            doc.roundedRect(20, 95, 170, 35, 3, 3, 'F');
+            doc.setDrawColor(5, 150, 105);
+            doc.setLineWidth(0.5);
+            doc.roundedRect(20, 95, 170, 35, 3, 3, 'S');
+            
+            doc.setTextColor(6, 78, 59);
+            doc.setFontSize(12);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Monthly EMI:', 30, 108);
+            doc.setFontSize(20);
+            doc.text(`₹${Math.round(currentEMI).toLocaleString('en-IN')}`, 30, 122);
+            
+            doc.setFontSize(10);
+            doc.setTextColor(100, 100, 100);
+            doc.text(`Principal: ₹${currentPrincipal.toLocaleString('en-IN')}`, 120, 108);
+            doc.text(`Total Interest: ₹${Math.round(currentInterest).toLocaleString('en-IN')}`, 120, 115);
+            doc.text(`Total Payment: ₹${Math.round(currentTotal).toLocaleString('en-IN')}`, 120, 122);
+            
+            // Amortization Schedule
+            doc.setTextColor(6, 78, 59);
+            doc.setFontSize(16);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Amortization Schedule', 20, 145);
+            
+            // Table
+            const tableData = currentScheduleData.map(data => [
+                data.year.toString(),
+                `₹${Math.round(data.opening).toLocaleString('en-IN')}`,
+                `₹${Math.round(data.emi).toLocaleString('en-IN')}`,
+                `₹${Math.round(data.interest).toLocaleString('en-IN')}`,
+                `₹${Math.round(data.principal).toLocaleString('en-IN')}`,
+                `₹${Math.round(data.closing).toLocaleString('en-IN')}`
+            ]);
+            
+            doc.autoTable({
+                startY: 155,
+                head: [['Year', 'Opening Balance', 'EMI', 'Interest', 'Principal', 'Closing Balance']],
+                body: tableData,
+                theme: 'grid',
+                headStyles: {
+                    fillColor: [5, 150, 105],
+                    textColor: 255,
+                    fontStyle: 'bold'
+                },
+                alternateRowStyles: {
+                    fillColor: [236, 253, 245]
+                },
+                styles: {
+                    fontSize: 9,
+                    cellPadding: 3
+                },
+                columnStyles: {
+                    0: { cellWidth: 15 },
+                    1: { cellWidth: 30 },
+                    2: { cellWidth: 30 },
+                    3: { cellWidth: 30 },
+                    4: { cellWidth: 30 },
+                    5: { cellWidth: 30 }
+                }
+            });
+            
+            // Footer
+            const pageCount = doc.internal.getNumberOfPages();
+            for (let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                doc.setFontSize(10);
+                doc.setTextColor(150, 150, 150);
+                doc.text('Generated by Verdant Finance EMI Calculator', 20, 290);
+                doc.text(`Page ${i} of ${pageCount}`, 180, 290);
+            }
+            
+            doc.save(`EMI_Report_${date.replace(/\//g, '-')}.pdf`);
+        }
+
+        // DOWNLOAD EXCEL FUNCTION
+        function downloadExcel() {
+            const loanAmount = document.getElementById('loanAmount').value;
+            const interestRate = document.getElementById('interestRate').value;
+            const loanTenure = document.getElementById('loanTenure').value;
+            const tenureType = document.getElementById('tenureType').value;
+            
+            // Create workbook
+            const wb = XLSX.utils.book_new();
+            wb.Props = {
+                Title: "EMI Calculation Report",
+                Subject: "Loan EMI Details",
+                Author: "Verdant Finance",
+                CreatedDate: new Date()
+            };
+            
+            // Summary Sheet
+            const summaryData = [
+                ["VERDANT FINANCE - EMI CALCULATOR REPORT"],
+                [""],
+                ["Loan Details"],
+                ["Loan Amount", `₹${parseInt(loanAmount).toLocaleString('en-IN')}`],
+                ["Interest Rate", `${interestRate}% per annum`],
+                ["Loan Tenure", `${loanTenure} ${tenureType}`],
+                [""],
+                ["Payment Summary"],
+                ["Monthly EMI", `₹${Math.round(currentEMI).toLocaleString('en-IN')}`],
+                ["Principal Amount", `₹${currentPrincipal.toLocaleString('en-IN')}`],
+                ["Total Interest Payable", `₹${Math.round(currentInterest).toLocaleString('en-IN')}`],
+                ["Total Payment", `₹${Math.round(currentTotal).toLocaleString('en-IN')}`],
+                [""],
+                ["Generated on", new Date().toLocaleString('en-IN')]
+            ];
+            
+            const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+            
+            // Set column widths
+            wsSummary['!cols'] = [{wch: 25}, {wch: 20}];
+            
+            // Styling (make first row bold and colored)
+            wsSummary['A1'].s = {
+                font: { bold: true, sz: 16, color: { rgb: "059669" } },
+                fill: { fgColor: { rgb: "ECFDF5" } }
+            };
+            
+            XLSX.utils.book_append_sheet(wb, wsSummary, "Summary");
+            
+            // Amortization Schedule Sheet
+            const scheduleHeaders = [["Year", "Opening Balance", "Annual EMI", "Interest Paid", "Principal Paid", "Closing Balance"]];
+            const scheduleRows = currentScheduleData.map(data => [
+                data.year,
+                Math.round(data.opening),
+                Math.round(data.emi),
+                Math.round(data.interest),
+                Math.round(data.principal),
+                Math.round(data.closing)
+            ]);
+            
+            const wsSchedule = XLSX.utils.aoa_to_sheet([...scheduleHeaders, ...scheduleRows]);
+            
+            // Set column widths for schedule
+            wsSchedule['!cols'] = [
+                {wch: 8}, {wch: 18}, {wch: 15}, {wch: 15}, {wch: 15}, {wch: 18}
+            ];
+            
+            XLSX.utils.book_append_sheet(wb, wsSchedule, "Amortization Schedule");
+            
+            // Monthly Breakdown Sheet (Detailed)
+            const monthlyHeaders = [["Month", "Opening Balance", "EMI", "Interest", "Principal", "Closing Balance"]];
+            const monthlyRows = [];
+            
+            let balance = currentPrincipal;
+            const r = parseFloat(interestRate) / 12 / 100;
+            const n = tenureType === 'years' ? loanTenure * 12 : loanTenure;
+            const emi = currentEMI;
+            
+            for (let month = 1; month <= n; month++) {
+                const interest = balance * r;
+                const principal = emi - interest;
+                const opening = balance;
+                balance -= principal;
+                
+                monthlyRows.push([
+                    month,
+                    Math.round(opening),
+                    Math.round(emi),
+                    Math.round(interest),
+                    Math.round(principal),
+                    Math.round(balance > 0 ? balance : 0)
+                ]);
+            }
+            
+            const wsMonthly = XLSX.utils.aoa_to_sheet([...monthlyHeaders, ...monthlyRows]);
+            wsMonthly['!cols'] = [
+                {wch: 8}, {wch: 18}, {wch: 15}, {wch: 15}, {wch: 15}, {wch: 18}
+            ];
+            
+            XLSX.utils.book_append_sheet(wb, wsMonthly, "Monthly Schedule");
+            
+            // Save file
+            const date = new Date().toISOString().split('T')[0];
+            XLSX.writeFile(wb, `EMI_Calculation_${date}.xlsx`);
         }
 
         // Initialize
